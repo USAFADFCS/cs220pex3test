@@ -7,7 +7,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <stdbool.h>
 #include "listAsLinkedList.h"
+#include "stackAsLinkedList.h"
+#include "queueAsLinkedList.h"
 
 // ===========================================================
 // linkedListInit tests
@@ -473,6 +476,322 @@ int test_sequential_deletes_from_front(void) {
 }
 
 // ===========================================================
+// Stack tests
+// ===========================================================
+
+int test_stack_init(void) {
+    StackAsLinkedList* stack = stackInit();
+    if (stack == NULL) return 1;
+    if (stack->numberOfItems != 0) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_push_single(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 10.0, '\0'));
+
+    if (stackSize(stack) != 1) return 1;
+    if (stackIsEmpty(stack)) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_push_multiple(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 1.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 2.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 3.0, '\0'));
+
+    if (stackSize(stack) != 3) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_pop_returns_top(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 1.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 2.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 3.0, '\0'));
+
+    Node* popped = stackPop(stack);
+    if (popped == NULL) return 1;
+    if (fabs(popped->number - 3.0) > 1e-9) return 1;
+    if (stackSize(stack) != 2) return 1;
+    free(popped);
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_pop_lifo_order(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 10.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 20.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 30.0, '\0'));
+
+    Node* n1 = stackPop(stack);
+    Node* n2 = stackPop(stack);
+    Node* n3 = stackPop(stack);
+
+    if (fabs(n1->number - 30.0) > 1e-9) return 1;
+    if (fabs(n2->number - 20.0) > 1e-9) return 1;
+    if (fabs(n3->number - 10.0) > 1e-9) return 1;
+
+    free(n1);
+    free(n2);
+    free(n3);
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_pop_empty(void) {
+    StackAsLinkedList* stack = stackInit();
+    Node* popped = stackPop(stack);
+    if (popped != NULL) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_peek(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 5.0, '\0'));
+    stackPush(stack, createNode(REAL_NUMBER, 15.0, '\0'));
+
+    Node* top = stackPeek(stack);
+    if (top == NULL) return 1;
+    if (fabs(top->number - 15.0) > 1e-9) return 1;
+    if (stackSize(stack) != 2) return 1;  // peek should not remove
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_peek_empty(void) {
+    StackAsLinkedList* stack = stackInit();
+    Node* top = stackPeek(stack);
+    if (top != NULL) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_is_empty_true(void) {
+    StackAsLinkedList* stack = stackInit();
+    if (!stackIsEmpty(stack)) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_is_empty_false(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 1.0, '\0'));
+    if (stackIsEmpty(stack)) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_is_full(void) {
+    StackAsLinkedList* stack = stackInit();
+    if (stackIsFull(stack)) return 1;  // should always be false
+    stackPush(stack, createNode(REAL_NUMBER, 1.0, '\0'));
+    if (stackIsFull(stack)) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_size(void) {
+    StackAsLinkedList* stack = stackInit();
+    if (stackSize(stack) != 0) return 1;
+    stackPush(stack, createNode(REAL_NUMBER, 1.0, '\0'));
+    if (stackSize(stack) != 1) return 1;
+    stackPush(stack, createNode(REAL_NUMBER, 2.0, '\0'));
+    if (stackSize(stack) != 2) return 1;
+    Node* p = stackPop(stack);
+    free(p);
+    if (stackSize(stack) != 1) return 1;
+    deleteStack(stack);
+    return 0;
+}
+
+int test_stack_mixed_types(void) {
+    StackAsLinkedList* stack = stackInit();
+    stackPush(stack, createNode(REAL_NUMBER, 3.0, '\0'));
+    stackPush(stack, createNode(MATH_OPERATOR, 0.0, '+'));
+    stackPush(stack, createNode(REAL_NUMBER, 4.0, '\0'));
+
+    Node* top = stackPop(stack);
+    if (top == NULL) return 1;
+    if (top->dataType != REAL_NUMBER) return 1;
+    if (fabs(top->number - 4.0) > 1e-9) return 1;
+    free(top);
+
+    top = stackPop(stack);
+    if (top == NULL) return 1;
+    if (top->dataType != MATH_OPERATOR) return 1;
+    if (top->operator != '+') return 1;
+    free(top);
+
+    deleteStack(stack);
+    return 0;
+}
+
+// ===========================================================
+// Queue tests
+// ===========================================================
+
+int test_queue_init(void) {
+    QueueAsLinkedList* queue = queueInit();
+    if (queue == NULL) return 1;
+    if (queue->numberOfItems != 0) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_enqueue_single(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 10.0, '\0'));
+
+    if (queueSize(queue) != 1) return 1;
+    if (queueIsEmpty(queue)) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_enqueue_multiple(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 1.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 2.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 3.0, '\0'));
+
+    if (queueSize(queue) != 3) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_dequeue_returns_front(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 1.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 2.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 3.0, '\0'));
+
+    Node* dequeued = queueDequeue(queue);
+    if (dequeued == NULL) return 1;
+    if (fabs(dequeued->number - 1.0) > 1e-9) return 1;
+    if (queueSize(queue) != 2) return 1;
+    free(dequeued);
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_dequeue_fifo_order(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 10.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 20.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 30.0, '\0'));
+
+    Node* n1 = queueDequeue(queue);
+    Node* n2 = queueDequeue(queue);
+    Node* n3 = queueDequeue(queue);
+
+    if (fabs(n1->number - 10.0) > 1e-9) return 1;
+    if (fabs(n2->number - 20.0) > 1e-9) return 1;
+    if (fabs(n3->number - 30.0) > 1e-9) return 1;
+
+    free(n1);
+    free(n2);
+    free(n3);
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_dequeue_empty(void) {
+    QueueAsLinkedList* queue = queueInit();
+    Node* dequeued = queueDequeue(queue);
+    if (dequeued != NULL) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_peek(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 5.0, '\0'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 15.0, '\0'));
+
+    Node* front = queuePeek(queue);
+    if (front == NULL) return 1;
+    if (fabs(front->number - 5.0) > 1e-9) return 1;
+    if (queueSize(queue) != 2) return 1;  // peek should not remove
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_peek_empty(void) {
+    QueueAsLinkedList* queue = queueInit();
+    Node* front = queuePeek(queue);
+    if (front != NULL) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_is_empty_true(void) {
+    QueueAsLinkedList* queue = queueInit();
+    if (!queueIsEmpty(queue)) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_is_empty_false(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 1.0, '\0'));
+    if (queueIsEmpty(queue)) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_is_full(void) {
+    QueueAsLinkedList* queue = queueInit();
+    if (queueIsFull(queue)) return 1;  // should always be false
+    queueEnqueue(queue, createNode(REAL_NUMBER, 1.0, '\0'));
+    if (queueIsFull(queue)) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_size(void) {
+    QueueAsLinkedList* queue = queueInit();
+    if (queueSize(queue) != 0) return 1;
+    queueEnqueue(queue, createNode(REAL_NUMBER, 1.0, '\0'));
+    if (queueSize(queue) != 1) return 1;
+    queueEnqueue(queue, createNode(REAL_NUMBER, 2.0, '\0'));
+    if (queueSize(queue) != 2) return 1;
+    Node* d = queueDequeue(queue);
+    free(d);
+    if (queueSize(queue) != 1) return 1;
+    deleteQueue(queue);
+    return 0;
+}
+
+int test_queue_mixed_types(void) {
+    QueueAsLinkedList* queue = queueInit();
+    queueEnqueue(queue, createNode(REAL_NUMBER, 3.0, '\0'));
+    queueEnqueue(queue, createNode(MATH_OPERATOR, 0.0, '+'));
+    queueEnqueue(queue, createNode(REAL_NUMBER, 4.0, '\0'));
+
+    Node* front = queueDequeue(queue);
+    if (front == NULL) return 1;
+    if (front->dataType != REAL_NUMBER) return 1;
+    if (fabs(front->number - 3.0) > 1e-9) return 1;
+    free(front);
+
+    front = queueDequeue(queue);
+    if (front == NULL) return 1;
+    if (front->dataType != MATH_OPERATOR) return 1;
+    if (front->operator != '+') return 1;
+    free(front);
+
+    deleteQueue(queue);
+    return 0;
+}
+
+// ===========================================================
 // Main test runner
 // ===========================================================
 
@@ -535,6 +854,64 @@ int main(int argc, char* argv[]) {
     if (strcmp(argv[1], "mixed1") == 0) return test_mixed_node_types();
     if (strcmp(argv[1], "integration1") == 0) return test_insert_then_delete_preserves_structure();
     if (strcmp(argv[1], "integration2") == 0) return test_sequential_deletes_from_front();
+
+    /* stackInit */
+    if (strcmp(argv[1], "stackInit1") == 0) return test_stack_init();
+
+    /* stackPush */
+    if (strcmp(argv[1], "stackPush1") == 0) return test_stack_push_single();
+    if (strcmp(argv[1], "stackPush2") == 0) return test_stack_push_multiple();
+
+    /* stackPop */
+    if (strcmp(argv[1], "stackPop1") == 0) return test_stack_pop_returns_top();
+    if (strcmp(argv[1], "stackPop2") == 0) return test_stack_pop_lifo_order();
+    if (strcmp(argv[1], "stackPop3") == 0) return test_stack_pop_empty();
+
+    /* stackPeek */
+    if (strcmp(argv[1], "stackPeek1") == 0) return test_stack_peek();
+    if (strcmp(argv[1], "stackPeek2") == 0) return test_stack_peek_empty();
+
+    /* stackIsEmpty */
+    if (strcmp(argv[1], "stackIsEmpty1") == 0) return test_stack_is_empty_true();
+    if (strcmp(argv[1], "stackIsEmpty2") == 0) return test_stack_is_empty_false();
+
+    /* stackIsFull */
+    if (strcmp(argv[1], "stackIsFull1") == 0) return test_stack_is_full();
+
+    /* stackSize */
+    if (strcmp(argv[1], "stackSize1") == 0) return test_stack_size();
+
+    /* stackMixed */
+    if (strcmp(argv[1], "stackMixed1") == 0) return test_stack_mixed_types();
+
+    /* queueInit */
+    if (strcmp(argv[1], "queueInit1") == 0) return test_queue_init();
+
+    /* queueEnqueue */
+    if (strcmp(argv[1], "queueEnqueue1") == 0) return test_queue_enqueue_single();
+    if (strcmp(argv[1], "queueEnqueue2") == 0) return test_queue_enqueue_multiple();
+
+    /* queueDequeue */
+    if (strcmp(argv[1], "queueDequeue1") == 0) return test_queue_dequeue_returns_front();
+    if (strcmp(argv[1], "queueDequeue2") == 0) return test_queue_dequeue_fifo_order();
+    if (strcmp(argv[1], "queueDequeue3") == 0) return test_queue_dequeue_empty();
+
+    /* queuePeek */
+    if (strcmp(argv[1], "queuePeek1") == 0) return test_queue_peek();
+    if (strcmp(argv[1], "queuePeek2") == 0) return test_queue_peek_empty();
+
+    /* queueIsEmpty */
+    if (strcmp(argv[1], "queueIsEmpty1") == 0) return test_queue_is_empty_true();
+    if (strcmp(argv[1], "queueIsEmpty2") == 0) return test_queue_is_empty_false();
+
+    /* queueIsFull */
+    if (strcmp(argv[1], "queueIsFull1") == 0) return test_queue_is_full();
+
+    /* queueSize */
+    if (strcmp(argv[1], "queueSize1") == 0) return test_queue_size();
+
+    /* queueMixed */
+    if (strcmp(argv[1], "queueMixed1") == 0) return test_queue_mixed_types();
 
     printf("Unknown test: %s\n", argv[1]);
     return 1;
